@@ -1,0 +1,22 @@
+{
+  "name": "livo",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@livo/web",
+    "build": "npm run build --workspace=@livo/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:realtime": "npm run dev --workspace=@livo/realtime",
+    "deploy:realtime": "npm run deploy --workspace=@livo/realtime",
+    "test:realtime": "node apps/realtime/scripts/load-test.mjs --sizes 10,50,100"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

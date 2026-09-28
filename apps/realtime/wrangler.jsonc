@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "livo-realtime",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-02-01",
+  // Binding name "Main" => clients connect to /parties/main/:roomId (PartyKit's default party).
+  "durable_objects": { "bindings": [{ "name": "Main", "class_name": "LivoRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LivoRoom"] }],
+  "vars": {
+    // Where batched responses and room status are persisted (the Next.js app). Set to your deployed site URL before `npm run deploy:realtime`.
+    "WEB_ORIGIN": "http://localhost:3000",
+    "MAX_PARTICIPANTS": "1000"
+  },
+  // Same port `partykit dev` used, so NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999 keeps working locally.
+  "dev": { "port": 1999 }
+  // ROOM_TOKEN_SECRET: set locally in .dev.vars, in production with `npx wrangler secret put ROOM_TOKEN_SECRET`.
+}

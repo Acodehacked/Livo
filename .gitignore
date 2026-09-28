@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.partykit/
+.wrangler/
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
+.dev.vars
+!.env.example
+*.tsbuildinfo
