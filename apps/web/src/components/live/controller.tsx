@@ -6,6 +6,7 @@ import { Logo } from "@/components/brand";
 import { QrCode } from "@/components/qr";
 import { ResultDetail } from "@/components/results";
 import { SlideThumb } from "@/components/slide/render";
+import { startSessionForm } from "@/app/rooms/actions";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { formatSeconds, useCountdown, useRoom } from "@/lib/use-room";
 
@@ -75,7 +76,7 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
         <section className="controller-ended">
           <h2>Session ended</h2>
           <p>Audience screens now show the session-ended message.</p>
-          <div className="row-actions"><Link className="button-primary" href={`/presentation/${doc.id}/analytics?room=${roomId}`}>View analytics</Link><Link className="button-secondary" href="/dashboard">Back to dashboard</Link></div>
+          <div className="row-actions"><form action={startSessionForm}><input type="hidden" name="presentationId" value={doc.id} /><input type="hidden" name="fresh" value="1" /><button className="button-primary">▶ Present again</button></form><Link className="button-secondary" href={`/presentation/${doc.id}/analytics?room=${roomId}`}>View analytics</Link><Link className="button-secondary" href="/dashboard">Back to dashboard</Link></div>
         </section>
       ) : (
         <div className="controller-grid">

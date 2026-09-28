@@ -2,7 +2,23 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { realtimeHost } from "@/lib/env";
 import { generateRoomCode } from "@/lib/rooms";
+
+/**
+ * The realtime room is the source of truth for status; Supabase only learns about it when the room
+ * flushes, which can lag or fail. Ask the room directly so an ended session is never reused.
+ */
+async function liveStatus(roomId: string): Promise<string | null> {
+  const host = realtimeHost();
+  const protocol = /^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? "http" : "https";
+  try {
+    const response = await fetch(`${protocol}://${host}/parties/main/${roomId}`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
+    return response.ok ? ((await response.json()) as { status?: string }).status ?? null : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Opens the controller for a presentation. Reuses the presentation's active room unless `fresh`
@@ -17,8 +33,11 @@ export async function startSession(presentationId: string, fresh = false): Promi
   if (!presentation.slides?.length) return { error: "Add at least one slide before presenting." };
 
   if (!fresh) {
-    const { data: active } = await supabase.from("rooms").select("room_code").eq("presentation_id", presentationId).neq("status", "ended").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (active) redirect(`/control/${active.room_code}`);
+    const { data: active } = await supabase.from("rooms").select("id, room_code").eq("presentation_id", presentationId).neq("status", "ended").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (active) {
+      if ((await liveStatus(active.id)) !== "ended") redirect(`/control/${active.room_code}`);
+      await supabase.from("rooms").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", active.id);
+    }
   }
 
   for (let attempt = 0; attempt < 5; attempt++) {
