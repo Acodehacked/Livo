@@ -6,6 +6,7 @@ import { savePresentation } from "@/app/presentation/[id]/actions";
 import { startSession } from "@/app/rooms/actions";
 import { Logo } from "@/components/brand";
 import { savePayload } from "@/lib/doc";
+import { exportPptx, exportXlsx } from "@/lib/export";
 import { createElement, SLIDE_LAYOUTS } from "@/lib/elements";
 import { IMAGE_TYPES_LABEL, isImageType } from "@/lib/image-types";
 import { IMAGE_TYPES, uploadImage } from "@/lib/upload";
@@ -31,6 +32,7 @@ export function Editor({ initialDoc, unsaved = false }: { initialDoc: Presentati
   const [toast, setToast] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [presenting, startPresenting] = useTransition();
+  const [exporting, setExporting] = useState<"pptx" | "xlsx" | null>(null);
   const clipboard = useRef<SlideElement[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -221,6 +223,21 @@ export function Editor({ initialDoc, unsaved = false }: { initialDoc: Presentati
     if (result?.error) notify(result.error);
   });
 
+  const exportAs = async (format: "pptx" | "xlsx") => {
+    setExporting(format);
+    try {
+      if (format === "pptx") {
+        const { skippedImages } = await exportPptx(doc);
+        if (skippedImages) notify(`Exported. ${skippedImages} image${skippedImages === 1 ? "" : "s"} couldn't be downloaded and ${skippedImages === 1 ? "was" : "were"} left out.`);
+      } else await exportXlsx(doc);
+    } catch (error) {
+      console.error(error);
+      notify("Export failed. Try again.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const actions: PropertyActions = { presentationId: doc.id, update: updateElements, updateSlide, notify };
   if (!slide) return null;
 
@@ -236,6 +253,13 @@ export function Editor({ initialDoc, unsaved = false }: { initialDoc: Presentati
             <button type="button" className="tool icon" title="Redo (Ctrl+Shift+Z)" disabled={!store.canRedo} onClick={store.redo}>↷</button>
             <label className="tool check" title="Snap to guides and grid"><input type="checkbox" checked={settings.snap} onChange={(event) => setSettings({ ...settings, snap: event.target.checked })} /> Snap</label>
             <label className="tool check" title="Show grid"><input type="checkbox" checked={settings.grid} onChange={(event) => setSettings({ ...settings, grid: event.target.checked })} /> Grid</label>
+            <details className="export-menu" onToggle={(event) => { const menu = event.currentTarget; if (menu.open) setTimeout(() => document.addEventListener("click", () => { menu.open = false; }, { once: true })); }}>
+              <summary className="tool" aria-disabled={exporting !== null}>{exporting ? "Exporting…" : "Export ▾"}</summary>
+              <div className="export-options" role="menu">
+                <button type="button" role="menuitem" disabled={exporting !== null} onClick={() => void exportAs("pptx")}><b>PowerPoint</b><small>.pptx · slides and speaker notes</small></button>
+                <button type="button" role="menuitem" disabled={exporting !== null} onClick={() => void exportAs("xlsx")}><b>Excel</b><small>.xlsx · slide text, questions and answer key</small></button>
+              </div>
+            </details>
             <Link href={`/presentation/${doc.id}/analytics`} className="tool">Analytics</Link>
             <button type="button" className="button-primary" onClick={present} disabled={presenting}>{presenting ? "Starting…" : "▶ Present"}</button>
           </div>

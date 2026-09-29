@@ -16,6 +16,12 @@ for (const file of [".env.local", ".env"]) {
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@livo/types"],
+  webpack(config, { isServer, webpack }) {
+    // pptxgenjs (editor export) imports node:fs / node:https on code paths that only run in Node.
+    // Drop the scheme so the package's own browser field can stub them out of client bundles.
+    if (!isServer) config.plugins.push(new webpack.NormalModuleReplacementPlugin(/^node:(fs|https)$/, (resource: { request: string }) => { resource.request = resource.request.slice(5); }));
+    return config;
+  },
 };
 
 export default nextConfig;

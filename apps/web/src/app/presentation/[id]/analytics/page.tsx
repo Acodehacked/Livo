@@ -5,9 +5,12 @@ import { Logo } from "@/components/brand";
 import { ResultDetail } from "@/components/results";
 import { analyse, type ParticipantRow, type ResponseRow } from "@/lib/analytics";
 import { docFromRow, PRESENTATION_SELECT, type PresentationRow } from "@/lib/doc";
+import { syncRooms } from "@/lib/room-sync";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Analytics · Livo" };
+
+const SYNC_WINDOW = 3 * 24 * 60 * 60 * 1000;
 
 const pct = (value: number | null) => (value === null ? "—" : `${Math.round(value * 100)}%`);
 const when = (date: string | null) => (date ? new Date(date).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" }) : "—");
@@ -22,6 +25,9 @@ export default async function Analytics({ params, searchParams }: { params: Prom
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  // Rooms live for 24h; pull recent ones from the realtime server in case its own flush never arrived.
+  const { data: recent } = await supabase.from("rooms").select("id").eq("presentation_id", id).gt("created_at", new Date(Date.now() - SYNC_WINDOW).toISOString()).order("created_at", { ascending: false }).limit(10);
+  if (recent?.length) await syncRooms(recent.map((item) => item.id));
   const [{ data: row }, { data: rooms }] = await Promise.all([
     supabase.from("presentations").select(PRESENTATION_SELECT).eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase.from("rooms").select("id, room_code, status, created_at, started_at, ended_at, participants(count), responses(count)").eq("presentation_id", id).order("created_at", { ascending: false }),

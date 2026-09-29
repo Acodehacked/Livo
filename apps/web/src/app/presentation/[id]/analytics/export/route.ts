@@ -1,6 +1,7 @@
 import { interactionTitle } from "@livo/types";
 import { describeAnswer, interactionsOf, type ResponseRow } from "@/lib/analytics";
 import { docFromRow, PRESENTATION_SELECT, type PresentationRow } from "@/lib/doc";
+import { syncRooms } from "@/lib/room-sync";
 import { createClient } from "@/lib/supabase/server";
 
 const cell = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -12,6 +13,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !roomId) return new Response("Not found", { status: 404 });
+  const { data: owned } = await supabase.from("rooms").select("id").eq("id", roomId).eq("presentation_id", id).maybeSingle();
+  if (owned) await syncRooms([owned.id]);
   const [{ data: row }, { data: participants }, { data: responses }] = await Promise.all([
     supabase.from("presentations").select(PRESENTATION_SELECT).eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase.from("participants").select("id, display_name").eq("room_id", roomId),

@@ -114,7 +114,18 @@ export class LivoRoom extends Server<Env> {
   }
 
   // Lightweight state for health checks and load tests: GET /parties/main/:roomId
-  onRequest() {
+  // With a system token it instead returns every stored answer, so the web app can pull what the
+  // flush couldn't push (e.g. WEB_ORIGIN unreachable). Same shape as a flush; upserts make it idempotent.
+  async onRequest(request: Request) {
+    const auth = request.headers.get("authorization");
+    if (auth) {
+      const claims = await verifyRoomToken(auth.replace(/^Bearer\s+/i, ""), this.env.ROOM_TOKEN_SECRET);
+      if (!claims || claims.role !== "system" || claims.roomId !== this.name) return Response.json({ error: "Unauthorized" }, { status: 401 });
+      const { status, startedAt, endedAt } = this.state;
+      const responses = [...this.answers].flatMap(([interactionId, answers]) => [...answers].map(([participantId, answer]) => ({ interactionId, participantId, ...answer })));
+      // A room that never started has nothing to say about status; don't overwrite the database with "ready".
+      return Response.json({ roomId: this.name, status: status === "ready" ? undefined : { status, startedAt, endedAt }, responses } satisfies FlushPayload);
+    }
     const { status, participantCount, currentSlideIndex } = this.state;
     return Response.json({ status, participantCount, currentSlideIndex, connections: [...this.getConnections()].length });
   }

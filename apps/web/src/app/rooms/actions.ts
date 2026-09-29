@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { realtimeHost } from "@/lib/env";
+import { realtimeUrl } from "@/lib/env";
 import { generateRoomCode } from "@/lib/rooms";
 
 /**
@@ -10,10 +10,8 @@ import { generateRoomCode } from "@/lib/rooms";
  * flushes, which can lag or fail. Ask the room directly so an ended session is never reused.
  */
 async function liveStatus(roomId: string): Promise<string | null> {
-  const host = realtimeHost();
-  const protocol = /^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? "http" : "https";
   try {
-    const response = await fetch(`${protocol}://${host}/parties/main/${roomId}`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
+    const response = await fetch(realtimeUrl(`/parties/main/${roomId}`), { cache: "no-store", signal: AbortSignal.timeout(3000) });
     return response.ok ? ((await response.json()) as { status?: string }).status ?? null : null;
   } catch {
     return null;

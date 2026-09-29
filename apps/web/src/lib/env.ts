@@ -15,6 +15,12 @@ export const publicEnv = () => browserEnv.parse({
 /** Realtime host without protocol or trailing slash; partysocket picks ws:// for localhost and wss:// otherwise. */
 export const realtimeHost = () => publicEnv().NEXT_PUBLIC_PARTYKIT_HOST.replace(/^(https?|wss?):\/\//, "").replace(/\/+$/, "");
 
+/** HTTP URL on the realtime server, for server-to-server calls. */
+export const realtimeUrl = (path: string) => {
+  const host = realtimeHost();
+  return `${/^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? "http" : "https"}://${host}${path}`;
+};
+
 /** Absolute site origin for join links and QR codes. */
 export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
 
