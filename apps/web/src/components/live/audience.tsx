@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { choiceOptions, interactionOf, YES_NO, type Aggregate, type ChoiceOption, type FormField, type InteractionConfig, type PresentationDoc, type ResponseValue, type Reveal } from "@livo/types";
 import { leaveRoom } from "@/app/join/actions";
 import { Logo } from "@/components/brand";
+import { BusyLabel, SubmitButton } from "@/components/loading";
 import { ChoiceBars, SlideThumb } from "@/components/slide/render";
 import { formatSeconds, useCountdown, useRoom, type RoomConnection } from "@/lib/use-room";
 
@@ -29,7 +30,7 @@ export function Audience({ doc, roomId, code, token, host, name }: { doc: Presen
     </header>
   );
 
-  if (connection === "invalid") return <Shell header={header}><Notice icon="⚠" title="Invalid session link">Ask the presenter for the room code and join again.<form action={leaveRoom.bind(null, code)}><button className="button-secondary">Join again</button></form></Notice></Shell>;
+  if (connection === "invalid") return <Shell header={header}><Notice icon="⚠" title="Invalid session link">Ask the presenter for the room code and join again.<form action={leaveRoom.bind(null, code)}><SubmitButton className="button-secondary">Join again</SubmitButton></form></Notice></Shell>;
   if (connection === "full") return <Shell header={header}><Notice icon="👥" title="This session is currently full">Try again in a moment.</Notice></Shell>;
   if (!state) return <Shell header={header}><Notice icon={<span className="spinner" />} title="Connecting…">Joining room {code}</Notice></Shell>;
   if (state.status === "ended") return <Shell header={header}><Notice icon="✓" title="Session ended">Thank you for participating, {name}.</Notice></Shell>;
@@ -148,7 +149,7 @@ function ResponseForm({ item, seed, initial, pending, onSubmit }: { item: Intera
     return item.kind === "quiz" && item.config.randomize && item.config.mode !== "yesno" ? shuffled(list, seed) : list;
   }, [item, seed]);
 
-  if (item.kind === "button") return <button type="button" className="button-primary big" disabled={pending} onClick={() => onSubmit(true)}>{item.config.label}</button>;
+  if (item.kind === "button") return <button type="button" className="button-primary big" disabled={pending} aria-busy={pending || undefined} onClick={() => onSubmit(true)}><BusyLabel busy={pending}>{item.config.label}</BusyLabel></button>;
 
   const ready = (() => {
     if (value === undefined || value === "") return false;
@@ -172,7 +173,7 @@ function ResponseForm({ item, seed, initial, pending, onSubmit }: { item: Intera
       {item.kind === "form" && item.config.fields.map((field) => (
         <FieldInput key={field.id} field={field} value={(value as Record<string, string | string[] | number>)[field.id]} onChange={(fieldValue) => setValue({ ...(value as Record<string, string | string[] | number>), [field.id]: fieldValue as string | number })} />
       ))}
-      <button className="button-primary big" disabled={!ready || pending}>{pending ? "Sending…" : item.kind === "form" ? item.config.submitLabel || "Submit" : "Submit"}</button>
+      <button className="button-primary big" disabled={!ready || pending} aria-busy={pending || undefined}><BusyLabel busy={pending} busyLabel="Sending…">{item.kind === "form" ? item.config.submitLabel || "Submit" : "Submit"}</BusyLabel></button>
     </form>
   );
 }

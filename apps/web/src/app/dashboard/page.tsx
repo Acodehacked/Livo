@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/auth/actions";
 import { Logo } from "@/components/brand";
+import { SubmitButton } from "@/components/loading";
 import { createClient } from "@/lib/supabase/server";
 import { NewPresentationForm } from "./new-presentation-form";
 import { PresentationActions } from "./presentation-actions";
@@ -33,7 +34,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <nav className="app-nav">
         <Logo href="/dashboard" />
         <span className="app-nav-user">{user.email}</span>
-        <form action={signOut}><button className="text-button">Sign out</button></form>
+        <form action={signOut}><SubmitButton className="text-button" pendingLabel="Signing out…">Sign out</SubmitButton></form>
       </nav>
       <main className="dashboard">
         <header className="dashboard-head">

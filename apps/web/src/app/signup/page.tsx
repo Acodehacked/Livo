@@ -3,6 +3,7 @@ import Link from "next/link";
 import { signUp } from "@/app/auth/actions";
 import { AuthArt } from "@/components/auth-art";
 import { Logo } from "@/components/brand";
+import { SubmitButton } from "@/components/loading";
 
 export const metadata: Metadata = { title: "Create account · Livo" };
 
@@ -18,7 +19,7 @@ export default async function Signup({ searchParams }: { searchParams: Promise<{
           <label className="field field-wide"><span>Email</span><input required type="email" name="email" autoComplete="email" placeholder="you@example.com" /></label>
           <label className="field field-wide"><span>Password</span><input required minLength={6} type="password" name="password" autoComplete="new-password" placeholder="At least 6 characters" /></label>
           {error && <p className="form-error">{error}</p>}
-          <button className="button-primary big">Create account →</button>
+          <SubmitButton className="button-primary big" pendingLabel="Creating account…">Create account →</SubmitButton>
         </form>
         <p className="auth-switch">Already have an account? <Link href="/login">Sign in</Link></p>
       </section>

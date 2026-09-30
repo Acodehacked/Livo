@@ -110,10 +110,12 @@ export function ElementBody({ element, context = {} }: { element: SlideElement; 
 
 export function TextBody({ element }: { element: ElementOf<"text"> }) {
   const { html, fontSize, fontFamily, color, align, valign, lineHeight } = element.props;
-  const clean = useMemo(() => sanitizeHtml(html), [html]);
+  // Memoise the object, not just the string: React 19 re-applies innerHTML whenever it gets a new
+  // { __html } object, which rebuilt the text's DOM on every editor render and swallowed clicks on it.
+  const inner = useMemo(() => ({ __html: sanitizeHtml(html) }), [html]);
   return (
     <div className="el-text" style={{ ...surfaceStyle(element.style), fontSize, fontFamily, color, textAlign: align, lineHeight, justifyContent: valign === "middle" ? "center" : valign === "bottom" ? "flex-end" : "flex-start" }}>
-      <div dangerouslySetInnerHTML={{ __html: clean }} />
+      <div dangerouslySetInnerHTML={inner} />
     </div>
   );
 }

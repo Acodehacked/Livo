@@ -9,6 +9,7 @@ export interface CanvasSettings { snap: boolean; grid: boolean; gridSize: number
 type Guide = { axis: "x" | "y"; at: number };
 type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+const MIN_SIDE_HANDLE_PX = 48; // on-screen size below which a box gets corner handles only
 const SNAP_PX = 6;
 
 /** Snaps a moving box to canvas edges/centre and other elements' edges/centres (smart guides), else to the grid. */
@@ -164,14 +165,19 @@ export function EditorCanvas({ slide, store, selection, setSelection, settings, 
               {editingId === element.id && element.type === "text" ? <TextEditor element={element} store={store} slideId={slide.id} onDone={() => setEditingId(null)} /> : <ElementBody element={element} />}
             </div>
           ))}
-          {selected.map((element) => (
+          {selected.map((element) => {
+            const startEditing = () => { if (element.type === "text" && !element.locked) setEditingId(element.id); };
+            // Side handles would cover most of a thin box (e.g. one line of text); keep only the corners there.
+            const handles = HANDLES.filter((handle) => handle.length === 2 || ((handle === "n" || handle === "s") ? element.height * scale >= MIN_SIDE_HANDLE_PX : element.width * scale >= MIN_SIDE_HANDLE_PX));
+            return (
             <div key={element.id} className={`selection-box${selected.length > 1 ? " is-multi" : ""}`} style={{ ...boxStyle(element), zIndex: 10_000, opacity: 1, outlineWidth: 2 / scale }}>
               {selected.length === 1 && !element.locked && editingId !== element.id && <>
-                {HANDLES.map((handle) => <span key={handle} className={`handle handle-${handle}`} style={{ width: handleSize, height: handleSize, borderWidth: 1.5 / scale }} onPointerDown={(event) => onResize(event, element, handle)} />)}
+                {handles.map((handle) => <span key={handle} className={`handle handle-${handle}`} style={{ width: handleSize, height: handleSize, borderWidth: 1.5 / scale }} onPointerDown={(event) => onResize(event, element, handle)} onDoubleClick={startEditing} />)}
                 <span className="rotate-handle" style={{ width: handleSize * 1.3, height: handleSize * 1.3, top: -28 / scale, borderWidth: 1.5 / scale }} onPointerDown={(event) => onRotate(event, element)} />
               </>}
             </div>
-          ))}
+            );
+          })}
           {guides.map((guide, index) => <div key={index} className={`guide guide-${guide.axis}`} style={guide.axis === "x" ? { left: guide.at, width: 1 / scale } : { top: guide.at, height: 1 / scale }} />)}
           {marquee && <div className="marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height, borderWidth: 1 / scale }} />}
         </div>

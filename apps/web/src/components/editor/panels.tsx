@@ -115,6 +115,9 @@ export function ArrangeBar({ count, grouped, locked, onAlign, onDistribute, onLa
   onAlign: (mode: AlignMode) => void; onDistribute: (axis: "x" | "y") => void; onLayer: (direction: "forward" | "backward" | "front" | "back") => void;
   onGroup: () => void; onUngroup: () => void; onLock: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
+  // Always rendered (with a hint when nothing is selected) so selecting never shifts the canvas —
+  // a shift between the two clicks of a double-click used to move text out from under the pointer.
+  if (!count) return <div className="arrange-bar is-empty" role="toolbar" aria-label="Arrange"><span className="arrange-label">Select an element to align, group or layer it · double-click text to edit</span></div>;
   const align: [AlignMode, string, string][] = [["left", "⇤", "Align left"], ["center", "⇹", "Align centre"], ["right", "⇥", "Align right"], ["top", "⤒", "Align top"], ["middle", "⇕", "Align middle"], ["bottom", "⤓", "Align bottom"]];
   return (
     <div className="arrange-bar" role="toolbar" aria-label="Arrange">

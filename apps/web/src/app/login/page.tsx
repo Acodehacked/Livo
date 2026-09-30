@@ -3,6 +3,7 @@ import Link from "next/link";
 import { signIn } from "@/app/auth/actions";
 import { AuthArt } from "@/components/auth-art";
 import { Logo } from "@/components/brand";
+import { SubmitButton } from "@/components/loading";
 
 export const metadata: Metadata = { title: "Sign in · Livo" };
 
@@ -20,7 +21,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           <label className="field field-wide"><span>Password</span><input required minLength={6} type="password" name="password" autoComplete="current-password" placeholder="••••••••" /></label>
           {error && <p className="form-error">{error}</p>}
           {message && <p className="form-message">{message}</p>}
-          <button className="button-primary big">Sign in →</button>
+          <SubmitButton className="button-primary big" pendingLabel="Signing in…">Sign in →</SubmitButton>
         </form>
         <p className="auth-switch">New to Livo? <Link href="/signup">Create an account</Link></p>
       </section>

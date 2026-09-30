@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { ChoiceOption, ElementOf, ElementStyle, FormField, FormFieldKind, ResultsVisibility, ShapeKind, Slide, SlideElement } from "@livo/types";
+import { BusyLabel } from "@/components/loading";
 import { ELEMENT_LABELS, FONTS, newOption } from "@/lib/elements";
 import { IMAGE_TYPES, uploadImage } from "@/lib/upload";
 import { ColorInput, Field, FillInput, NumberInput, RangeInput, Row, Section, Segmented, Select, TextInput, Toggle } from "./controls";
@@ -359,7 +360,7 @@ function ImageSource({ label, value, onChange, presentationId, notify }: { label
     <div className="image-source">
       <TextInput label={`${label} URL`} value={value} placeholder="https://…" onChange={onChange} />
       <div className="image-source-actions">
-        <label className="button-secondary">{busy ? "Uploading…" : value ? "Replace…" : "Upload…"}<input type="file" accept={IMAGE_TYPES.join(",")} hidden onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} /></label>
+        <label className="button-secondary" aria-busy={busy || undefined}><BusyLabel busy={busy} busyLabel="Uploading…">{value ? "Replace…" : "Upload…"}</BusyLabel><input type="file" accept={IMAGE_TYPES.join(",")} hidden onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} /></label>
         {value && <button type="button" className="text-button" onClick={() => onChange("")}>Remove</button>}
       </div>
     </div>

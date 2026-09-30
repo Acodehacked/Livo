@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/brand";
+import { SubmitButton } from "@/components/loading";
 import { Audience } from "@/components/live/audience";
 import { StatusScreen } from "@/components/live/status-screen";
 import { realtimeHost } from "@/lib/env";
@@ -35,7 +36,7 @@ export default async function JoinRoom({ params, searchParams }: { params: Promi
         <form action={joinRoom.bind(null, room.room_code)} className="join-form">
           <label className="field field-wide"><span>Your name <i className="muted">(optional)</i></span><input name="name" maxLength={40} autoFocus autoComplete="nickname" placeholder="Abin" /></label>
           {error && <p className="form-error">{error}</p>}
-          <button className="button-primary big">Join session →</button>
+          <SubmitButton className="button-primary big" pendingLabel="Joining…">Join session →</SubmitButton>
         </form>
         <p className="muted">Your name is only shown to the presenter.</p>
       </section>

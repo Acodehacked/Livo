@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { fillCss } from "@/components/slide/render";
+import { SubmitButton } from "@/components/loading";
 import { TEMPLATES } from "@/lib/templates";
 import { createPresentation } from "./actions";
 
@@ -27,7 +28,7 @@ export function NewPresentationForm() {
         </div>
         <div className="row-actions">
           <button type="button" className="button-secondary" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="button-primary">Create</button>
+          <SubmitButton className="button-primary" pendingLabel="Creating…">Create</SubmitButton>
         </div>
       </form>
     </div>

@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { resultsOnScreen, slideInteractions, type PresentationDoc } from "@livo/types";
 import { Logo } from "@/components/brand";
+import { SubmitButton } from "@/components/loading";
 import { QrCode } from "@/components/qr";
 import { ResultDetail } from "@/components/results";
 import { SlideThumb } from "@/components/slide/render";
@@ -52,6 +53,9 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
     return () => window.removeEventListener("keydown", onKey);
   }, [goTo, index]);
 
+  // Stable object: React 19 re-applies innerHTML for every new { __html }, resetting any text selection on each state update.
+  const notesHtml = useMemo(() => ({ __html: sanitizeHtml((current?.notes ?? "").replace(/\n/g, "<br>")) }), [current?.notes]);
+
   const correct = live?.status === "closed" ? Object.fromEntries(interactions.filter((item) => item.kind === "quiz").map((item) => [item.id, item.config.correct])) : undefined;
 
   return (
@@ -78,7 +82,7 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
         <section className="controller-ended">
           <h2>Session ended</h2>
           <p>Audience screens now show the session-ended message.</p>
-          <div className="row-actions"><form action={startSessionForm}><input type="hidden" name="presentationId" value={doc.id} /><input type="hidden" name="fresh" value="1" /><button className="button-primary">▶ Present again</button></form><Link className="button-secondary" href={`/presentation/${doc.id}/analytics?room=${roomId}`}>View analytics</Link><Link className="button-secondary" href="/dashboard">Back to dashboard</Link></div>
+          <div className="row-actions"><form action={startSessionForm}><input type="hidden" name="presentationId" value={doc.id} /><input type="hidden" name="fresh" value="1" /><SubmitButton className="button-primary" pendingLabel="Starting…">▶ Present again</SubmitButton></form><Link className="button-secondary" href={`/presentation/${doc.id}/analytics?room=${roomId}`}>View analytics</Link><Link className="button-secondary" href="/dashboard">Back to dashboard</Link></div>
         </section>
       ) : (
         <div className="controller-grid">
@@ -154,7 +158,7 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
             {current?.notes && (
               <section className="controller-card">
                 <header><h3>Speaker notes</h3></header>
-                <div className="notes" dangerouslySetInnerHTML={{ __html: sanitizeHtml(current.notes.replace(/\n/g, "<br>")) }} />
+                <div className="notes" dangerouslySetInnerHTML={notesHtml} />
               </section>
             )}
           </div>

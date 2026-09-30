@@ -5,6 +5,7 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH, type ElementType, type PresentationDoc, ty
 import { savePresentation } from "@/app/presentation/[id]/actions";
 import { startSession } from "@/app/rooms/actions";
 import { Logo } from "@/components/brand";
+import { BusyLabel, Spinner } from "@/components/loading";
 import { savePayload } from "@/lib/doc";
 import { exportPptx, exportXlsx } from "@/lib/export";
 import { createElement, SLIDE_LAYOUTS } from "@/lib/elements";
@@ -247,21 +248,21 @@ export function Editor({ initialDoc, unsaved = false }: { initialDoc: Presentati
         <header className="editor-top">
           <Logo href="/dashboard" withName={false} />
           <input className="doc-title" aria-label="Presentation title" value={doc.title} maxLength={120} onFocus={store.begin} onBlur={store.end} onChange={(event) => apply((current) => ({ ...current, title: event.target.value }))} />
-          <span className={`save-state is-${saveState}`}>{{ saved: "All changes saved", saving: "Saving…", unsaved: "Unsaved changes", error: "Save failed — retrying on next edit" }[saveState]}</span>
+          <span className={`save-state is-${saveState}`}>{saveState === "saving" && <Spinner />}{{ saved: "All changes saved", saving: "Saving…", unsaved: "Unsaved changes", error: "Save failed — retrying on next edit" }[saveState]}</span>
           <div className="editor-top-actions">
             <button type="button" className="tool icon" title="Undo (Ctrl+Z)" disabled={!store.canUndo} onClick={store.undo}>↶</button>
             <button type="button" className="tool icon" title="Redo (Ctrl+Shift+Z)" disabled={!store.canRedo} onClick={store.redo}>↷</button>
             <label className="tool check" title="Snap to guides and grid"><input type="checkbox" checked={settings.snap} onChange={(event) => setSettings({ ...settings, snap: event.target.checked })} /> Snap</label>
             <label className="tool check" title="Show grid"><input type="checkbox" checked={settings.grid} onChange={(event) => setSettings({ ...settings, grid: event.target.checked })} /> Grid</label>
             <details className="export-menu" onToggle={(event) => { const menu = event.currentTarget; if (menu.open) setTimeout(() => document.addEventListener("click", () => { menu.open = false; }, { once: true })); }}>
-              <summary className="tool" aria-disabled={exporting !== null}>{exporting ? "Exporting…" : "Export ▾"}</summary>
+              <summary className="tool" aria-disabled={exporting !== null}><BusyLabel busy={exporting !== null} busyLabel="Exporting…">Export ▾</BusyLabel></summary>
               <div className="export-options" role="menu">
                 <button type="button" role="menuitem" disabled={exporting !== null} onClick={() => void exportAs("pptx")}><b>PowerPoint</b><small>.pptx · slides and speaker notes</small></button>
                 <button type="button" role="menuitem" disabled={exporting !== null} onClick={() => void exportAs("xlsx")}><b>Excel</b><small>.xlsx · slide text, questions and answer key</small></button>
               </div>
             </details>
             <Link href={`/presentation/${doc.id}/analytics`} className="tool">Analytics</Link>
-            <button type="button" className="button-primary" onClick={present} disabled={presenting}>{presenting ? "Starting…" : "▶ Present"}</button>
+            <button type="button" className="button-primary" onClick={present} disabled={presenting} aria-busy={presenting || undefined}><BusyLabel busy={presenting} busyLabel="Starting…">▶ Present</BusyLabel></button>
           </div>
         </header>
 
@@ -272,8 +273,8 @@ export function Editor({ initialDoc, unsaved = false }: { initialDoc: Presentati
           onDrop={(event) => { const file = [...event.dataTransfer.files].find((item) => item.type.startsWith("image/")); if (file) { event.preventDefault(); void insertImageFile(file); } }}>
           <InsertBar onInsert={insertType} onImage={() => fileInput.current?.click()} />
           <input ref={fileInput} type="file" hidden accept={IMAGE_TYPES.join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void insertImageFile(file); event.target.value = ""; }} />
-          {selected.length > 0 && <ArrangeBar count={selected.length} grouped={selected.some((element) => element.groupId)} locked={selected.every((element) => element.locked)}
-            onAlign={align} onDistribute={distribute} onLayer={(direction) => layer(direction)} onGroup={group} onUngroup={ungroup} onLock={toggleLock} onDuplicate={duplicateSelected} onDelete={removeSelected} />}
+          <ArrangeBar count={selected.length} grouped={selected.some((element) => element.groupId)} locked={selected.every((element) => element.locked)}
+            onAlign={align} onDistribute={distribute} onLayer={(direction) => layer(direction)} onGroup={group} onUngroup={ungroup} onLock={toggleLock} onDuplicate={duplicateSelected} onDelete={removeSelected} />
           <EditorCanvas slide={slide} store={store} selection={selection} setSelection={setSelection} settings={settings} editingId={editingId} setEditingId={setEditingId} />
           <footer className="editor-status">Slide {slideIndex + 1} of {doc.slides.length} · <kbd>Del</kbd> delete · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>G</kbd> group · hold <kbd>Alt</kbd> to move without snapping</footer>
         </main>
