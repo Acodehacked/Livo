@@ -1,7 +1,7 @@
 "use client";
 import PartySocket from "partysocket";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CLOSE_CODES, type Aggregate, type ClientEvent, type Identity, type ResponseValue, type Reveal, type RoomState, type ServerEvent, type TimerState } from "@livo/types";
+import { CLOSE_CODES, type Aggregate, type ClientEvent, type Identity, type LiveResponse, type ResponseValue, type Reveal, type RoomState, type ServerEvent, type TimerState } from "@livo/types";
 
 export type ConnectionStatus = "connecting" | "open" | "reconnecting" | "invalid" | "full";
 
@@ -13,8 +13,19 @@ export interface RoomConnection {
   answers: Record<string, ResponseValue>;
   reveals: Record<string, Reveal>;
   error: Extract<ServerEvent, { type: "ERROR" }>["payload"] | null;
+  /** Controller only: every participant's current answer, by interaction id then participant id. */
+  log: ResponseLog;
   send: (event: ClientEvent) => void;
 }
+
+export interface ResponseLog { names: Record<string, string>; byInteraction: Record<string, Record<string, LiveResponse>> }
+
+const withResponses = (log: ResponseLog, responses: LiveResponse[], names: Record<string, string> = {}): ResponseLog => {
+  const byInteraction = { ...log.byInteraction };
+  for (const response of responses) byInteraction[response.interactionId] = { ...byInteraction[response.interactionId], [response.participantId]: response };
+  return { names: { ...log.names, ...names }, byInteraction };
+};
+const EMPTY_LOG: ResponseLog = { names: {}, byInteraction: {} };
 
 /** Connects to a live room over a reconnecting WebSocket. Every (re)connect receives SYNC_STATE, so state never depends on event history. */
 export function useRoom({ host, roomId, token }: { host: string; roomId: string; token: string }): RoomConnection {
@@ -26,6 +37,7 @@ export function useRoom({ host, roomId, token }: { host: string; roomId: string;
   const [answers, setAnswers] = useState<Record<string, ResponseValue>>({});
   const [reveals, setReveals] = useState<Record<string, Reveal>>({});
   const [error, setError] = useState<RoomConnection["error"]>(null);
+  const [log, setLog] = useState<ResponseLog>(EMPTY_LOG);
 
   useEffect(() => {
     const ws = new PartySocket({ host, party: "main", room: roomId, query: { token } });
@@ -46,13 +58,15 @@ export function useRoom({ host, roomId, token }: { host: string; roomId: string;
         case "RESPONSE_ACCEPTED": setAnswers((current) => ({ ...current, [event.payload.interactionId]: event.payload.value })); setError(null); break;
         case "ANSWER_REVEALED": setReveals((current) => ({ ...current, ...event.payload })); break;
         case "ERROR": setError(event.payload); break;
+        case "RESPONSES_SYNC": { const { reset, names, responses } = event.payload; setLog((current) => withResponses(reset ? EMPTY_LOG : current, responses, names)); break; }
+        case "RESPONSE_RECORDED": { const { name, ...response } = event.payload; setLog((current) => withResponses(current, [response], { [response.participantId]: name })); break; }
       }
     });
     return () => { ws.close(); socket.current = null; };
   }, [host, roomId, token]);
 
   const send = useCallback((event: ClientEvent) => { socket.current?.send(JSON.stringify(event)); }, []);
-  return { connection, state, you, results, answers, reveals, error, send };
+  return { connection, state, you, results, answers, reveals, error, log, send };
 }
 
 /** Seconds left on a timestamp-based timer, computed locally (the server never broadcasts ticks). */

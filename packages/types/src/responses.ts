@@ -137,3 +137,16 @@ export function aggregate(item: InteractionConfig, values: ResponseValue[]): Agg
     }
   }
 }
+
+/** Human-readable answer (controller answer lists, CSV export). */
+export function describeAnswer(item: InteractionConfig, value: ResponseValue): string {
+  const label = (options: { id: string; label: string }[], id: unknown) => options.find((option) => option.id === id)?.label ?? String(id);
+  if ((item.kind === "quiz" || item.kind === "poll") && item.config.mode !== "text") return (Array.isArray(value) ? value : [value]).map((id) => label(choiceOptions(item.config), id)).join("; ");
+  if (item.kind === "form" && value && typeof value === "object" && !Array.isArray(value)) {
+    return item.config.fields.filter((field) => field.id in value).map((field) => {
+      const answer = (value as Record<string, unknown>)[field.id];
+      return `${field.label}: ${field.kind === "choice" ? label(field.options ?? [], answer) : field.kind === "yesno" ? (answer === "yes" ? "Yes" : "No") : String(answer)}`;
+    }).join(" | ");
+  }
+  return value === true ? "clicked" : String(value);
+}

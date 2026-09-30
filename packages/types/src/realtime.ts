@@ -53,6 +53,9 @@ export const PRIVILEGED_EVENTS = new Set<ClientEvent["type"]>([
   "TIMER_STARTED", "TIMER_STOPPED", "INTERACTION_OPENED", "INTERACTION_CLOSED", "RESULTS_SHOWN", "RESULTS_HIDDEN",
 ]);
 
+/** One participant's current answer to one interaction. Also the unit of persistence (FlushPayload). */
+export interface LiveResponse { interactionId: string; participantId: string; value: ResponseValue; correct?: boolean; at: number }
+
 /** Events the room sends. RESULTS_UPDATED and ANSWER_REVEALED are filtered per role before sending. */
 export type ServerEvent =
   | { type: "SYNC_STATE"; payload: { state: RoomState; you: Identity; answers: Record<string, ResponseValue>; reveals: Record<string, Reveal> } }
@@ -60,6 +63,9 @@ export type ServerEvent =
   | { type: "RESULTS_UPDATED"; payload: Record<string, Aggregate> }
   | { type: "RESPONSE_ACCEPTED"; payload: { interactionId: string; value: ResponseValue } }
   | { type: "ANSWER_REVEALED"; payload: Record<string, Reveal> }
+  // Controller (admin) only: individual answers with names. SYNC chunks arrive on connect, the first with reset.
+  | { type: "RESPONSES_SYNC"; payload: { reset: boolean; names: Record<string, string>; responses: LiveResponse[] } }
+  | { type: "RESPONSE_RECORDED"; payload: LiveResponse & { name: string } }
   | { type: "ERROR"; payload: { code: "forbidden" | "invalid" | "closed" | "already_answered" | "rate_limited"; message: string; interactionId?: string } };
 
 /** WebSocket close codes the room uses so clients can show the right error screen. */
@@ -69,5 +75,5 @@ export const CLOSE_CODES = { invalidToken: 4001, ended: 4002, full: 4003 } as co
 export interface FlushPayload {
   roomId: string;
   status?: { status: RoomStatus; startedAt: number | null; endedAt: number | null };
-  responses: { interactionId: string; participantId: string; value: ResponseValue; correct?: boolean; at: number }[];
+  responses: LiveResponse[];
 }

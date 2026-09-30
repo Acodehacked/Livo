@@ -462,6 +462,29 @@ kbd { font: 600 11px var(--mono); padding: 1px 5px; border-radius: 5px; border: 
 .controller-jump button { flex: 0 0 120px; border: 2px solid transparent; border-radius: 10px; padding: 0; background: none; position: relative; }
 .controller-jump button.is-current { border-color: var(--violet); }
 .controller-jump span { position: absolute; left: 4px; bottom: 4px; font: 700 10px var(--mono); background: rgba(11,13,26,.8); padding: 1px 5px; border-radius: 5px; color: #fff; }
+.responses-panel { padding: 16px; display: grid; gap: 14px; max-width: 980px; width: 100%; margin: 0 auto; }
+.responses-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.responses-toolbar .muted { color: #9aa0c8; font-size: 13px; margin-left: auto; }
+.responses-panel .segmented { background: var(--navy-2); border-color: var(--navy-line); }
+.responses-panel .segmented button { color: #b7bbdd; font-weight: 600; }
+.responses-panel .segmented button + button { border-left-color: var(--navy-line); }
+.responses-panel .segmented button.is-active { background: #fff; color: var(--navy); }
+.responses-search { flex: 1 1 180px; max-width: 260px; background: var(--navy-2); border: 1px solid var(--navy-line); color: #fff; border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 13px; }
+.responses-empty { color: #9aa0c8; text-align: center; padding: 40px 0; }
+.responses-empty .text-button { color: #fff; }
+.answer-list > summary { cursor: pointer; font-weight: 700; font-size: 13px; color: #d7daf5; padding: 4px 0; }
+.answer-list .muted { color: #9aa0c8; font-size: 13px; padding: 6px 0; }
+.answer-list .text-button { color: #b7bbdd; margin-top: 8px; }
+.answer-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.answer-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #7d83ad; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--navy-line); }
+.answer-table td { padding: 8px; border-bottom: 1px solid var(--navy-line); color: #e6e8fa; vertical-align: top; }
+.answer-table td:first-child { font-weight: 600; white-space: nowrap; }
+.answer-table .answer-value { width: 100%; word-break: break-word; }
+.answer-table .answer-time { color: #7d83ad; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.answer-table .is-correct { color: #4ade80; font-weight: 800; }
+.answer-table .is-wrong { color: #f87171; font-weight: 800; }
+.controller-interaction > .text-button { color: #b7bbdd; justify-self: start; }
+@media (max-width: 600px) { .responses-toolbar .muted { margin-left: 0; width: 100%; } .answer-table .answer-time { display: none; } }
 .controller-card { background: var(--navy-2); border: 1px solid var(--navy-line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
 .controller-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .controller-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #9aa0c8; }

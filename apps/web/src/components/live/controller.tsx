@@ -6,6 +6,7 @@ import { Logo } from "@/components/brand";
 import { QrCode } from "@/components/qr";
 import { ResultDetail } from "@/components/results";
 import { SlideThumb } from "@/components/slide/render";
+import { ResponsesPanel } from "./responses-panel";
 import { startSessionForm } from "@/app/rooms/actions";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { formatSeconds, useCountdown, useRoom } from "@/lib/use-room";
@@ -16,9 +17,9 @@ const STATUS_LABEL = { draft: "Draft", ready: "Ready", live: "Live", paused: "Pa
 const TIMER_PRESETS = [30, 60, 120, 300];
 
 export function Controller({ doc, roomId, code, token, host, links }: { doc: PresentationDoc; roomId: string; code: string; token: string; host: string; links: ShareLinks }) {
-  const { state, results, connection, send } = useRoom({ host, roomId, token });
+  const { state, results, log, connection, send } = useRoom({ host, roomId, token });
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [panel, setPanel] = useState<"live" | "share">("live");
+  const [panel, setPanel] = useState<"live" | "responses" | "share">("live");
   const [customTimer, setCustomTimer] = useState(90);
   const countdown = useCountdown(state?.timer);
 
@@ -69,10 +70,11 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
 
       <nav className="controller-tabs">
         <button type="button" className={panel === "live" ? "is-active" : ""} onClick={() => setPanel("live")}>Control</button>
+        <button type="button" className={panel === "responses" ? "is-active" : ""} onClick={() => setPanel("responses")}>Responses</button>
         <button type="button" className={panel === "share" ? "is-active" : ""} onClick={() => setPanel("share")}>Join & screens</button>
       </nav>
 
-      {panel === "share" ? <SharePanel code={code} links={links} /> : ended ? (
+      {panel === "share" ? <SharePanel code={code} links={links} /> : panel === "responses" ? <ResponsesPanel doc={doc} log={log} currentSlideId={current?.id ?? null} live={live} /> : ended ? (
         <section className="controller-ended">
           <h2>Session ended</h2>
           <p>Audience screens now show the session-ended message.</p>
@@ -134,6 +136,7 @@ export function Controller({ doc, roomId, code, token, host, links }: { doc: Pre
                 </div>
                 {live?.closesAt && live.status === "open" && <p className="muted">Closes automatically when the timer ends.</p>}
                 {interactions.map((item) => <ResultDetail key={item.id} item={item} aggregate={results[item.id]} />)}
+                <button type="button" className="text-button" onClick={() => setPanel("responses")}>See who answered what →</button>
                 <p className="hint">“Only me” results never leave this controller. Others appear on the presentation screen when shown.</p>
               </>}
             </section>

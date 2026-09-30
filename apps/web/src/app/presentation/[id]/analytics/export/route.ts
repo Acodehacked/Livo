@@ -1,5 +1,5 @@
-import { interactionTitle } from "@livo/types";
-import { describeAnswer, interactionsOf, type ResponseRow } from "@/lib/analytics";
+import { describeAnswer, interactionTitle } from "@livo/types";
+import { interactionsOf, type ResponseRow } from "@/lib/analytics";
 import { docFromRow, PRESENTATION_SELECT, type PresentationRow } from "@/lib/doc";
 import { syncRooms } from "@/lib/room-sync";
 import { createClient } from "@/lib/supabase/server";

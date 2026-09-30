@@ -2,12 +2,12 @@ import { routePartykitRequest, Server, type Connection, type ConnectionContext, 
 import { z } from "zod";
 import {
   aggregate, allowsChange, CLOSE_CODES, resultsOnScreen, isCorrect, PRIVILEGED_EVENTS, signRoomToken, validateResponse, verifyRoomToken,
-  type Aggregate, type ClientEvent, type FlushPayload, type Identity, type InteractionConfig, type ResponseValue, type Reveal, type RoomState, type ServerEvent,
+  type Aggregate, type ClientEvent, type FlushPayload, type Identity, type InteractionConfig, type LiveResponse, type ResponseValue, type Reveal, type RoomState, type ServerEvent,
 } from "@livo/types";
 
 type Env = { Main: DurableObjectNamespace<LivoRoom>; ROOM_TOKEN_SECRET: string; WEB_ORIGIN?: string; MAX_PARTICIPANTS?: string };
 type Answer = { value: ResponseValue; at: number; correct?: boolean };
-type Snapshot = { state: RoomState; configs: InteractionConfig[]; closed: string[]; pending: FlushPayload["responses"]; statusDirty: boolean; quizTimer: boolean };
+type Snapshot = { state: RoomState; configs: InteractionConfig[]; closed: string[]; pending: FlushPayload["responses"]; statusDirty: boolean; quizTimer: boolean; names?: Record<string, string> };
 
 // Token buckets per connection; presenters navigate quickly, the audience only answers.
 const RATE = { participant: { burst: 8, perSecond: 4 }, staff: { burst: 30, perSecond: 15 } };
@@ -17,6 +17,8 @@ const RESULTS_THROTTLE = 250;
 // Responses waiting to be written to Supabase. Live answers are stored separately, so if the web app
 // is unreachable for a long time only the oldest database writes are dropped, never live results.
 const MAX_PENDING = 3_000;
+// Answers per RESPONSES_SYNC message, keeping each well under the WebSocket message size limit.
+const SYNC_CHUNK = 2_000;
 
 const envelope = z.object({ type: z.string(), payload: z.unknown().optional() });
 const slideChanged = z.object({
@@ -40,6 +42,7 @@ export class LivoRoom extends Server<Env> {
   configs = new Map<string, InteractionConfig>();
   answers = new Map<string, Map<string, Answer>>();
   closed = new Set<string>();
+  names = new Map<string, string>(); // participantId → display name, for the controller's answer list
   pending: FlushPayload["responses"] = [];
   statusDirty = false;
   quizTimer = false;
@@ -55,6 +58,7 @@ export class LivoRoom extends Server<Env> {
     this.state.participantCount = 0;
     for (const config of saved?.configs ?? []) this.configs.set(config.id, config);
     this.closed = new Set(saved?.closed ?? []);
+    this.names = new Map(Object.entries(saved?.names ?? {}));
     this.pending = saved?.pending ?? [];
     this.statusDirty = saved?.statusDirty ?? false;
     this.quizTimer = saved?.quizTimer ?? false;
@@ -72,10 +76,12 @@ export class LivoRoom extends Server<Env> {
       if (!present.has(claims.participantId ?? "") && present.size >= max) { connection.close(CLOSE_CODES.full, "Room full"); return; }
     }
     connection.setState({ role: claims.role, participantId: claims.participantId, name: claims.name });
+    if (claims.role === "participant" && claims.participantId && this.names.get(claims.participantId) !== (claims.name ?? "")) { this.names.set(claims.participantId, claims.name ?? ""); void this.persist(); }
     this.state.roomId = this.name;
     if (claims.presentationId && !this.state.presentationId) this.state.presentationId = claims.presentationId;
     this.send(connection, { type: "SYNC_STATE", payload: { state: this.state, you: connection.state!, answers: this.answersFor(connection.state!), reveals: this.revealsFor(connection.state!) } });
     this.sendResultsTo(connection, this.currentResults());
+    if (claims.role === "admin") this.sendResponseLog(connection);
     this.refreshParticipantCount();
   }
 
@@ -122,7 +128,7 @@ export class LivoRoom extends Server<Env> {
       const claims = await verifyRoomToken(auth.replace(/^Bearer\s+/i, ""), this.env.ROOM_TOKEN_SECRET);
       if (!claims || claims.role !== "system" || claims.roomId !== this.name) return Response.json({ error: "Unauthorized" }, { status: 401 });
       const { status, startedAt, endedAt } = this.state;
-      const responses = [...this.answers].flatMap(([interactionId, answers]) => [...answers].map(([participantId, answer]) => ({ interactionId, participantId, ...answer })));
+      const responses = this.allResponses();
       // A room that never started has nothing to say about status; don't overwrite the database with "ready".
       return Response.json({ roomId: this.name, status: status === "ready" ? undefined : { status, startedAt, endedAt }, responses } satisfies FlushPayload);
     }
@@ -237,8 +243,23 @@ export class LivoRoom extends Server<Env> {
       if (this.pending.length > MAX_PENDING) this.pending.splice(0, this.pending.length - MAX_PENDING);
     }
     this.send(sender, { type: "RESPONSE_ACCEPTED", payload: { interactionId: item.id, value } });
+    const recorded = JSON.stringify({ type: "RESPONSE_RECORDED", payload: { interactionId: item.id, participantId: identity.participantId, name: identity.name ?? "", ...answer } } satisfies ServerEvent);
+    for (const connection of this.getConnections<Identity>()) if (connection.state?.role === "admin") connection.send(recorded);
     this.scheduleResults();
     this.scheduleAlarm(Date.now() + FLUSH_DELAY);
+  }
+
+  /** Every answer so far, with names, for the controller's Responses tab. Chunked; the first chunk resets the client's log. */
+  private sendResponseLog(connection: Connection<Identity>) {
+    const responses = this.allResponses();
+    const names = Object.fromEntries(this.names);
+    for (let start = 0; start === 0 || start < responses.length; start += SYNC_CHUNK) {
+      this.send(connection, { type: "RESPONSES_SYNC", payload: { reset: start === 0, names: start === 0 ? names : {}, responses: responses.slice(start, start + SYNC_CHUNK) } });
+    }
+  }
+
+  private allResponses(): LiveResponse[] {
+    return [...this.answers].flatMap(([interactionId, answers]) => [...answers].map(([participantId, answer]) => ({ interactionId, participantId, ...answer })));
   }
 
   // --- results & reveals, filtered per role ------------------------------------
@@ -339,7 +360,7 @@ export class LivoRoom extends Server<Env> {
   }
 
   private async persist() {
-    const snapshot: Snapshot = { state: this.state, configs: [...this.configs.values()], closed: [...this.closed], pending: this.pending, statusDirty: this.statusDirty, quizTimer: this.quizTimer };
+    const snapshot: Snapshot = { state: this.state, configs: [...this.configs.values()], closed: [...this.closed], pending: this.pending, statusDirty: this.statusDirty, quizTimer: this.quizTimer, names: Object.fromEntries(this.names) };
     const dirty = [...this.dirtyAnswers];
     this.dirtyAnswers.clear();
     try {
